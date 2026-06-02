@@ -1,6 +1,8 @@
+import asyncio
 import json
 import os
 import re
+from typing import AsyncGenerator
 
 import anthropic
 import structlog
@@ -34,7 +36,9 @@ class RAGPipeline:
     ) -> None:
         self.search = search
         self.reranker = reranker
-        self._client = anthropic.Anthropic(api_key=anthropic_api_key or os.getenv("ANTHROPIC_API_KEY"))
+        _key = anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
+        self._client = anthropic.Anthropic(api_key=_key)
+        self._async_client = anthropic.AsyncAnthropic(api_key=_key)
 
     def answer(
         self,
@@ -88,3 +92,80 @@ class RAGPipeline:
                 "citations": [],
                 "confidence": confidence,
             }
+
+    async def answer_stream(
+        self,
+        query: str,
+        filters: SearchFilters | None = None,
+        conversation_history: list[dict] | None = None,
+        top_k: int = 5,
+    ) -> AsyncGenerator[dict, None]:
+        """Yield SSE-ready dicts: {type: 'token'|'done'|'no_source', ...}"""
+        candidates = self.search.search(query, n_results=20, filters=filters)
+        results = self.reranker.rerank(query, candidates, top_k=top_k) if self.reranker and candidates else candidates[:top_k]
+        confidence = compute_confidence(results)
+
+        if confidence == "no_source":
+            yield {"type": "no_source", "answer": "내 라이브러리에서 관련 논문을 찾지 못했습니다. / No relevant papers found in your library.", "citations": [], "confidence": "no_source"}
+            return
+
+        system, messages = build_messages(query, results, conversation_history)
+        log.info("rag_streaming_llm", query=query[:80], sources=len(results), model=_MODEL)
+
+        full_text = ""
+        # State machine: extract only the "answer" field text as it streams
+        _PREFIX = '"answer": "'
+        _buf = ""
+        _in_answer = False
+        _escaped = False
+        _answer_done = False
+
+        async with self._async_client.messages.stream(
+            model=_MODEL,
+            max_tokens=_MAX_TOKENS,
+            system=system,
+            messages=messages,
+        ) as stream:
+            async for chunk in stream.text_stream:
+                full_text += chunk
+
+                if _answer_done:
+                    continue
+
+                if not _in_answer:
+                    _buf += chunk
+                    idx = _buf.find(_PREFIX)
+                    if idx != -1:
+                        _in_answer = True
+                        _buf = _buf[idx + len(_PREFIX):]
+                        chunk = _buf
+                        _buf = ""
+                    else:
+                        continue
+
+                # extract printable chars from the "answer" JSON string
+                out = []
+                for ch in chunk:
+                    if _escaped:
+                        if ch == 'n':   out.append('\n')
+                        elif ch == 't': out.append('\t')
+                        elif ch == '"': out.append('"')
+                        elif ch == '\\': out.append('\\')
+                        else:           out.append(ch)
+                        _escaped = False
+                    elif ch == '\\':
+                        _escaped = True
+                    elif ch == '"':
+                        _answer_done = True
+                        break
+                    else:
+                        out.append(ch)
+
+                if out:
+                    yield {"type": "token", "text": "".join(out)}
+
+        try:
+            parsed = parse_llm_response(full_text)
+            yield {"type": "done", "citations": parsed.get("citations", []), "confidence": confidence}
+        except (json.JSONDecodeError, KeyError):
+            yield {"type": "done", "citations": [], "confidence": confidence}
