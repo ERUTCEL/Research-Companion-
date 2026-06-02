@@ -20,6 +20,7 @@ structlog.configure(
 
 from api.routes.chat import router as chat_router
 from api.routes.ingest import router as ingest_router
+from api.routes.library import router as library_router
 from api.routes.search import router as search_router
 
 app = FastAPI(
@@ -38,6 +39,7 @@ app.add_middleware(
 app.include_router(ingest_router)
 app.include_router(search_router)
 app.include_router(chat_router)
+app.include_router(library_router)
 
 
 @app.exception_handler(anthropic.APIStatusError)
