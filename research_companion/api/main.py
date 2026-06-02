@@ -1,9 +1,11 @@
 import os
 
+import anthropic
 import structlog
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 load_dotenv()
 
@@ -36,6 +38,19 @@ app.add_middleware(
 app.include_router(ingest_router)
 app.include_router(search_router)
 app.include_router(chat_router)
+
+
+@app.exception_handler(anthropic.APIStatusError)
+async def anthropic_api_error_handler(request: Request, exc: anthropic.APIStatusError) -> JSONResponse:
+    log = structlog.get_logger()
+    log.error("anthropic_api_error", status_code=exc.status_code, message=str(exc.message))
+    status = 502 if exc.status_code >= 500 else 400
+    if exc.status_code == 401:
+        detail = "Invalid ANTHROPIC_API_KEY — check your .env file."
+        status = 401
+    else:
+        detail = f"Anthropic API error {exc.status_code}: {exc.message}"
+    return JSONResponse(status_code=status, content={"detail": detail})
 
 
 @app.get("/health")
