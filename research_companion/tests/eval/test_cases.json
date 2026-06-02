@@ -1,0 +1,51 @@
+[
+  {
+    "id": "tc_001",
+    "query": "attention mechanism이 뭔지 설명해줘",
+    "expected_titles": ["Attention Is All You Need"],
+    "expected_keywords": ["attention", "query", "key", "value"],
+    "language": "ko"
+  },
+  {
+    "id": "tc_002",
+    "query": "What papers in my library discuss BERT pretraining?",
+    "expected_titles": ["BERT: Pre-training of Deep Bidirectional Transformers"],
+    "expected_keywords": ["masked language model", "pretraining", "bidirectional"],
+    "language": "en"
+  },
+  {
+    "id": "tc_003",
+    "query": "2022년 이후 diffusion model 관련 논문",
+    "expected_filters": {"year_from": 2022},
+    "expected_keywords": ["diffusion", "score matching", "denoising"],
+    "language": "ko"
+  },
+  {
+    "id": "tc_004",
+    "query": "내가 중요하다고 표시한 강화학습 논문",
+    "expected_filters": {"importance_min": 3},
+    "expected_keywords": ["reinforcement learning", "reward", "policy"],
+    "language": "ko"
+  },
+  {
+    "id": "tc_005",
+    "query": "내 노션 메모에서 GAN에 대해 뭐라고 썼어?",
+    "expected_source_types": ["notion_memo"],
+    "expected_keywords": ["GAN", "generator", "discriminator"],
+    "language": "ko"
+  },
+  {
+    "id": "tc_006",
+    "query": "Papers by Vaswani about sequence to sequence models",
+    "expected_author": "Vaswani",
+    "expected_keywords": ["encoder", "decoder", "sequence"],
+    "language": "en"
+  },
+  {
+    "id": "tc_007",
+    "query": "quantum computing 관련 논문 있어?",
+    "expected_confidence": "no_source",
+    "note": "Library likely has no quantum computing papers — should return no_source",
+    "language": "ko"
+  }
+]
