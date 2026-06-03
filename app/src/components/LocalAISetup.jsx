@@ -26,6 +26,10 @@ export default function LocalAISetup({ backend }) {
 
   useEffect(() => { refresh() }, [])
 
+  function openOllamaDownload() {
+    window.open('https://ollama.com/download', '_blank', 'noopener,noreferrer')
+  }
+
   async function pull(model) {
     if (status && status.server_running === false) {
       setMessage('Ollama가 실행 중이 아닙니다. Ollama를 먼저 설치하거나 실행한 뒤 다시 시도하세요.')
@@ -82,6 +86,15 @@ export default function LocalAISetup({ backend }) {
               닫기
             </button>
           </div>
+          <div className="mb-3 flex items-center justify-between rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2">
+            <span className="text-[#64748B]">
+              상태: {available ? `사용 가능 (${status.model})` : serverReady ? 'Ollama 실행됨, 모델 필요' : 'Ollama 실행 필요'}
+            </span>
+            <button type="button" onClick={refresh}
+              className="rounded-md border border-[#E2E8F0] bg-white px-2 py-1 font-medium text-[#475569] hover:bg-[#F1F5F9]">
+              새로고침
+            </button>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-3">
               <div className="text-[10px] uppercase tracking-[0.12em] text-[#94A3B8]">Required</div>
@@ -101,8 +114,32 @@ export default function LocalAISetup({ backend }) {
             처음에는 Light 모델만 설치하고 필요할 때 Default나 Deep 모델을 추가하세요.
           </p>
           {status?.server_running === false && (
-            <div className="mt-3 rounded-md border border-[#FDE68A] bg-[#FEFCE8] px-3 py-2 text-[#854D0E]">
-              Ollama가 실행 중이 아닙니다. 로컬 모델을 설치하려면 Ollama를 먼저 설치하거나 실행해야 합니다.
+            <div className="mt-3 rounded-md border border-[#FDE68A] bg-[#FEFCE8] p-3 text-[#854D0E]">
+              <div className="font-semibold text-[#713F12]">Ollama가 실행 중이 아닙니다.</div>
+              <div className="mt-2 grid gap-2">
+                <div className="rounded-md bg-white/70 p-2">
+                  <div className="font-semibold text-[#713F12]">macOS</div>
+                  <p className="mt-1 leading-6">Applications 폴더에서 Ollama 앱을 더블클릭하세요. 화면 위 메뉴 막대에 Ollama 아이콘이 보이면 실행 중입니다.</p>
+                </div>
+                <div className="rounded-md bg-white/70 p-2">
+                  <div className="font-semibold text-[#713F12]">Windows</div>
+                  <p className="mt-1 leading-6">시작 메뉴에서 Ollama를 검색해 실행하세요. 오른쪽 아래 작업표시줄 트레이에 Ollama 아이콘이 보이면 실행 중입니다.</p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={openOllamaDownload}
+                  className="rounded-md bg-[#4F46E5] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#4338CA]">
+                  macOS/Windows 설치 파일 받기
+                </button>
+                <button type="button" onClick={refresh}
+                  className="rounded-md border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-medium text-[#475569] hover:bg-[#F1F5F9]">
+                  실행 확인
+                </button>
+              </div>
+              <details className="mt-3 rounded-md bg-white/70 px-2 py-1.5 text-[11px] text-[#713F12]">
+                <summary className="cursor-pointer font-medium">고급 사용자용 터미널 대체 방법</summary>
+                <div className="mt-1 font-mono">ollama serve</div>
+              </details>
             </div>
           )}
           <div className="mt-4 space-y-2">
