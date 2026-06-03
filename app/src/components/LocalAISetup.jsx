@@ -26,8 +26,11 @@ export default function LocalAISetup({ backend }) {
 
   useEffect(() => { refresh() }, [])
 
-  function openOllamaDownload() {
-    window.open('https://ollama.com/download', '_blank', 'noopener,noreferrer')
+  async function openOllamaDownload() {
+    const url = 'https://ollama.com/download'
+    const opened = await window.api?.openExternal?.(url)
+    if (!opened) window.open(url, '_blank', 'noopener,noreferrer')
+    setMessage('Ollama 다운로드 페이지를 외부 브라우저로 열었습니다. 설치 후 이 화면으로 돌아와서 Ollama를 실행하고 “실행 확인”을 누르세요.')
   }
 
   async function pull(model) {
@@ -113,6 +116,9 @@ export default function LocalAISetup({ backend }) {
             로컬 AI는 필수는 아니지만, 그림/다이어그램 근거 정리 품질을 올려줍니다.
             처음에는 Light 모델만 설치하고 필요할 때 Default나 Deep 모델을 추가하세요.
           </p>
+          <div className="mt-3 rounded-md border border-[#C7D2FE] bg-[#EEF2FF] px-3 py-2 leading-6 text-[#3730A3]">
+            설치 파일은 외부 브라우저에서 열립니다. 이 앱 화면은 그대로 남아 있으니 설치가 끝나면 다시 돌아와서 “실행 확인”을 누르세요.
+          </div>
           {status?.server_running === false && (
             <div className="mt-3 rounded-md border border-[#FDE68A] bg-[#FEFCE8] p-3 text-[#854D0E]">
               <div className="font-semibold text-[#713F12]">Ollama가 실행 중이 아닙니다.</div>

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { spawn } from 'child_process'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -75,6 +75,14 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://') || url.startsWith('http://')) {
+      shell.openExternal(url)
+      return { action: 'deny' }
+    }
+    return { action: 'deny' }
+  })
 }
 
 app.whenReady().then(() => {
@@ -96,4 +104,10 @@ ipcMain.handle('select-folder', async () => {
     title: 'PDF 폴더 선택',
   })
   return result.canceled ? null : result.filePaths[0]
+})
+
+ipcMain.handle('open-external', async (_event, url) => {
+  if (typeof url !== 'string' || !/^https?:\/\//.test(url)) return false
+  await shell.openExternal(url)
+  return true
 })
