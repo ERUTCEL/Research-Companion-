@@ -1,6 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
 
-const isElectron = typeof window !== 'undefined' && !!window.api?.isElectron
+function getElectronApi() {
+  return typeof window !== 'undefined' ? window.api : null
+}
+
+function getFilePath(file) {
+  const api = getElectronApi()
+  return api?.getPathForFile?.(file) || file.path || ''
+}
+
+function getParentFolder(filePath) {
+  const separator = filePath.includes('\\') ? '\\' : '/'
+  return filePath.substring(0, filePath.lastIndexOf(separator))
+}
 
 export default function AddDocPanel({ backend, onDone, compact = false }) {
   const [source, setSource] = useState(null)
@@ -39,17 +51,19 @@ export default function AddDocPanel({ backend, onDone, compact = false }) {
     const items = Array.from(e.dataTransfer.items || [])
     if (!files.length) return
     const first = files[0]
-    const filePath = first.path
+    const filePath = getFilePath(first)
     if (!filePath) { setError('Electron 앱에서 실행 중인지 확인하세요.'); return }
     const entry = items[0]?.webkitGetAsEntry?.()
     const isDir = entry ? entry.isDirectory : (first.type === '')
-    setFolderPath(isDir ? filePath : filePath.substring(0, filePath.lastIndexOf('/')))
+    setFolderPath(isDir ? filePath : getParentFolder(filePath))
     setSource('folder')
   }
 
   async function handleSelectFolder() {
+    const api = getElectronApi()
+    const isElectron = !!api?.isElectron
     if (!isElectron) return
-    const p = await window.api.selectFolder()
+    const p = await api.selectFolder()
     if (p) { setFolderPath(p); setSource('folder'); setError('') }
   }
 
@@ -82,6 +96,7 @@ export default function AddDocPanel({ backend, onDone, compact = false }) {
 
   const canIngest = source === 'folder' ? folderPath.trim() : notionToken.trim() && notionDbId.trim()
   const gap = compact ? 'space-y-3' : 'space-y-4'
+  const isElectron = !!getElectronApi()?.isElectron
 
   return (
     <div className={gap}>
