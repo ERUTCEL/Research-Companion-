@@ -23,7 +23,9 @@ structlog.configure(
 from api.routes.chat import _get_pipeline, router as chat_router
 from api.routes.ingest import router as ingest_router
 from api.routes.library import router as library_router
+from api.routes.local_ai import router as local_ai_router
 from api.routes.search import _get_search, router as search_router
+from generation.local_reasoner import LocalReasoner
 
 log = structlog.get_logger()
 
@@ -44,6 +46,7 @@ app.include_router(ingest_router)
 app.include_router(search_router)
 app.include_router(chat_router)
 app.include_router(library_router)
+app.include_router(local_ai_router)
 
 # warm-up state
 _ready = {"status": False, "detail": "모델 로딩 중..."}
@@ -73,7 +76,16 @@ async def startup():
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "ready": _ready["status"], "detail": _ready["detail"]}
+    local_status = LocalReasoner().status()
+    return {
+        "status": "ok",
+        "ready": _ready["status"],
+        "detail": _ready["detail"],
+        "local_reasoner": {
+            "available": local_status["available"],
+            "model": local_status["model"],
+        },
+    }
 
 
 @app.exception_handler(anthropic.APIStatusError)

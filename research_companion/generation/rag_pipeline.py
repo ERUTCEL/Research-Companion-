@@ -18,6 +18,24 @@ _MODEL = "claude-sonnet-4-6"
 _MAX_TOKENS = 2048
 
 
+def _source_preview(results: list[dict]) -> list[dict]:
+    previews: list[dict] = []
+    for i, r in enumerate(results, 1):
+        meta = r.get("metadata", {})
+        previews.append({
+            "index": i,
+            "title": meta.get("title") or "Untitled source",
+            "author": meta.get("author") or None,
+            "year": meta.get("year") or None,
+            "source_type": meta.get("source_type", "pdf"),
+            "content_type": meta.get("content_type", "text"),
+            "figure_type": meta.get("figure_type") or None,
+            "caption": meta.get("caption") or None,
+            "is_user_memo": bool(meta.get("is_user_memo", False)),
+        })
+    return previews
+
+
 def parse_llm_response(raw: str) -> dict:
     match = re.search(r"```json\s*(.*?)\s*```", raw, re.DOTALL)
     if match:
@@ -108,6 +126,8 @@ class RAGPipeline:
         if confidence == "no_source":
             yield {"type": "no_source", "answer": "내 라이브러리에서 관련 논문을 찾지 못했습니다. / No relevant papers found in your library.", "citations": [], "confidence": "no_source"}
             return
+
+        yield {"type": "sources", "sources": _source_preview(results)}
 
         system, messages = build_messages(query, results, conversation_history)
         log.info("rag_streaming_llm", query=query[:80], sources=len(results), model=_MODEL)

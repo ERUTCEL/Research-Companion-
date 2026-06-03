@@ -4,6 +4,7 @@ __pycache__/
 *.egg-info/
 .venv/
 dist/
+app/dist-electron/
 build/
 
 # Runtime data

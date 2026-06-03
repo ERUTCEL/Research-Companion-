@@ -9,6 +9,7 @@ import structlog
 from ingestion.models import ParseResult
 from ingestion.ocr.easyocr_runner import EasyOCRRunner
 from ingestion.ocr.vision_corrector import VisionCorrector
+from ingestion.parsers.figure_parser import FigureParser
 from ingestion.parsers.marker_parser import MarkerParser
 from ingestion.parsers.nougat_parser import NougatParser
 from ingestion.parsers.pymupdf_parser import PyMuPDFParser
@@ -106,6 +107,7 @@ class PDFRouter:
         self._marker = MarkerParser()
         self._nougat = NougatParser()
         self._tatr = TATRParser()
+        self._figures = FigureParser()
         self._easyocr = EasyOCRRunner()
         self._tesseract = _TesseractParser()
         self._corrector = VisionCorrector()
@@ -130,6 +132,10 @@ class PDFRouter:
             if tables:
                 result.tables = tables
                 log.info("tables_merged", count=len(tables), path=path)
+            figures = self._extract_figures(path, lite)
+            if figures:
+                result.figures = figures
+                log.info("figures_merged", count=len(figures), path=path)
 
         elapsed = time.perf_counter() - start
         log.info(
@@ -192,6 +198,11 @@ class PDFRouter:
                 return future.result(timeout=120)
         except Exception:
             return []
+
+    def _extract_figures(self, path: str, lite: bool) -> list[dict]:
+        if lite:
+            return []
+        return self._figures.parse(path)
 
 
 class _TesseractParser:

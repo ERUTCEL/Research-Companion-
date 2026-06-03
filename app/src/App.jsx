@@ -3,7 +3,7 @@ import Onboarding from './pages/Onboarding'
 import Chat from './pages/Chat'
 import Library from './pages/Library'
 
-const BACKEND = 'http://127.0.0.1:8001'
+const BACKEND = '/api'
 const POLL_MS = 1500
 
 export default function App() {
@@ -32,17 +32,17 @@ export default function App() {
 
   if (!ready) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center justify-center gap-4">
-        <div className="text-4xl">🔬</div>
-        <p className="text-white font-semibold text-lg">Research Companion</p>
-        <div className="flex items-center gap-2 text-gray-400 text-sm">
+      <div className="min-h-screen bg-[#f4f1ea] flex flex-col items-center justify-center gap-4 text-[#20211f]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#243c35] text-sm font-semibold text-white">RC</div>
+        <p className="font-semibold text-lg">Research Companion</p>
+        <div className="flex items-center gap-2 text-[#6f746d] text-sm">
           <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
           </svg>
           {readyDetail}
         </div>
-        <p className="text-gray-600 text-xs mt-2">임베딩 모델 로딩 중 — 최초 실행 시 30초~1분 소요됩니다</p>
+        <p className="text-[#8c8171] text-xs mt-2">임베딩 모델 로딩 중 — 최초 실행 시 30초~1분 소요됩니다</p>
       </div>
     )
   }
@@ -52,15 +52,24 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <div className="w-14 bg-gray-900 flex flex-col items-center py-4 gap-4">
-        <button onClick={() => setPage('chat')} title="채팅"
-          className={`p-2 rounded-lg text-lg ${page === 'chat' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}>
-          💬
+    <div className="flex h-screen bg-[#f4f1ea] text-[#20211f]">
+      <div className="w-20 border-r border-[#ddd5c7] bg-[#fbfaf7] flex flex-col items-center py-4 gap-3">
+        <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-[#243c35] text-xs font-semibold text-white">
+          RC
+        </div>
+        <button onClick={() => setPage('chat')} title="Decision desk"
+          className={`flex h-12 w-14 flex-col items-center justify-center rounded-md text-[11px] transition-colors ${
+            page === 'chat' ? 'bg-[#dfe9e4] text-[#243c35]' : 'text-[#7b776e] hover:bg-[#f0ece3] hover:text-[#243c35]'
+          }`}>
+          <span className="text-sm font-semibold">D</span>
+          Desk
         </button>
-        <button onClick={() => setPage('library')} title="라이브러리"
-          className={`p-2 rounded-lg text-lg ${page === 'library' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}>
-          📚
+        <button onClick={() => setPage('library')} title="Library"
+          className={`flex h-12 w-14 flex-col items-center justify-center rounded-md text-[11px] transition-colors ${
+            page === 'library' ? 'bg-[#eadfca] text-[#69512d]' : 'text-[#7b776e] hover:bg-[#f0ece3] hover:text-[#69512d]'
+          }`}>
+          <span className="text-sm font-semibold">L</span>
+          Library
         </button>
       </div>
       <div className="flex-1 overflow-hidden">

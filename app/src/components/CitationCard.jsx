@@ -1,10 +1,13 @@
 export default function CitationCard({ citation }) {
-  const { index, title, author, year, page, source_type, is_user_memo, parse_quality_warning } = citation
+  const { index, title, author, year, page, source_type, is_user_memo, parse_quality_warning, content_type, figure_type, caption } = citation
 
   const isNotion = source_type?.startsWith('notion') || is_user_memo
-  const label = is_user_memo ? '내 메모' : '논문'
+  const isVisual = content_type === 'figure' || content_type === 'diagram'
+  const label = is_user_memo ? '내 메모' : isVisual ? '그림 근거' : '논문'
   const labelColor = is_user_memo
     ? 'bg-purple-100 text-purple-700'
+    : isVisual
+    ? 'bg-emerald-100 text-emerald-700'
     : 'bg-blue-100 text-blue-700'
 
   let meta = ''
@@ -20,11 +23,15 @@ export default function CitationCard({ citation }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${labelColor}`}>{label}</span>
+          {figure_type && (
+            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{figure_type}</span>
+          )}
           {parse_quality_warning && (
             <span title="파싱 품질이 낮습니다 — 직접 확인 권장" className="text-xs">⚠️</span>
           )}
         </div>
         <p className="text-sm font-medium text-gray-900 mt-0.5 truncate">{title || '(제목 없음)'}</p>
+        {caption && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{caption}</p>}
         {meta && <p className="text-xs text-gray-500 mt-0.5">{meta}</p>}
       </div>
     </div>

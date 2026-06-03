@@ -22,6 +22,9 @@ def format_citations(results: list[dict]) -> list[dict]:
             "source_type": source_type,
             "is_user_memo": is_memo,
             "parse_quality": meta.get("parse_quality", "high"),
+            "content_type": meta.get("content_type", "text"),
+            "figure_type": meta.get("figure_type", ""),
+            "caption": meta.get("caption", ""),
         }
 
         if source_type == "pdf":

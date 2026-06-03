@@ -6,6 +6,7 @@ class ParseResult:
     success: bool
     text: str = ""
     tables: list[dict] = field(default_factory=list)
+    figures: list[dict] = field(default_factory=list)
     page_count: int = 0
     parser_used: str = ""
     parse_quality: str = "high"   # "high" | "medium" | "low"
@@ -35,3 +36,8 @@ class ChunkMetadata:
     # Notion-specific
     importance_weight: float = 1.0  # ★ count → 0.7 / 1.0 / 1.5
     collection: str = ""            # Notion DB name or folder name
+
+    # Content subtype for richer retrieval over non-body evidence
+    content_type: str = "text"       # "text" | "figure" | "table" | "diagram"
+    figure_type: str = ""            # "er_diagram" | "flowchart" | "architecture" | ...
+    caption: str = ""

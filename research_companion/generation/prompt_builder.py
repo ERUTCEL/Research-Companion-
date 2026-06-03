@@ -17,13 +17,23 @@ def build_context_block(results: list[dict]) -> str:
         meta = r.get("metadata", {})
         source_type = meta.get("source_type", "pdf")
         is_memo = meta.get("is_user_memo", False)
+        content_type = meta.get("content_type", "text")
+        figure_type = meta.get("figure_type", "")
+        caption = meta.get("caption", "")
         title = meta.get("title", "Unknown")
         author = meta.get("author", "")
         year = meta.get("year", "")
         page = meta.get("page_number", "")
         quality = meta.get("parse_quality", "high")
 
-        label = "USER MEMO" if is_memo else "PAPER"
+        if is_memo:
+            label = "USER MEMO"
+        elif content_type in ("figure", "diagram"):
+            label = f"VISUAL EVIDENCE/{figure_type or content_type}"
+        elif content_type == "table":
+            label = "TABLE EVIDENCE"
+        else:
+            label = "PAPER"
         citation_hint = f"{title}"
         if author:
             citation_hint += f" — {author}"
@@ -33,6 +43,8 @@ def build_context_block(results: list[dict]) -> str:
             citation_hint += f", p.{page}"
         if quality == "low":
             citation_hint += " ⚠️ low parse quality"
+        if caption:
+            citation_hint += f" — {caption}"
 
         parts.append(
             f"[{i} | {label} | {citation_hint}]\n{r['text']}\n"
