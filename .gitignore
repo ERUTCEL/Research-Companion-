@@ -22,3 +22,4 @@ _nougat_out/
 
 # macOS
 .DS_Store
+.env

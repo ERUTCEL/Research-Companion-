@@ -15,15 +15,31 @@ let backendProcess
 function startBackend() {
   const repoRoot = path.resolve(__dirname, '../../')
   const backendDir = path.join(repoRoot, 'research_companion')
-  const uvicorn = path.join(backendDir, '.venv', 'bin', 'uvicorn')
+  const venvDir = path.join(backendDir, '.venv')
+  const uvicornCandidates = [
+    path.join(venvDir, 'bin', 'uvicorn'),
+    path.join(venvDir, 'Scripts', 'uvicorn.exe'),
+    path.join(venvDir, 'Scripts', 'uvicorn'),
+  ]
+  const pythonCandidates = [
+    path.join(venvDir, 'bin', 'python'),
+    path.join(venvDir, 'Scripts', 'python.exe'),
+  ]
+  const uvicorn = uvicornCandidates.find(candidate => fs.existsSync(candidate))
+  const python = pythonCandidates.find(candidate => fs.existsSync(candidate))
 
-  if (!fs.existsSync(uvicorn)) {
-    console.warn('[backend] uvicorn not found — skipping auto-start')
+  if (!uvicorn && !python) {
+    console.warn('[backend] virtualenv not found; run ./run.sh or .\\run.ps1 first')
     return
   }
 
   // .env is loaded by python-dotenv inside FastAPI — no need to parse it here
-  backendProcess = spawn(uvicorn, ['api.main:app', '--port', '8001', '--host', '127.0.0.1'], {
+  const command = uvicorn || python
+  const args = uvicorn
+    ? ['api.main:app', '--port', '8001', '--host', '127.0.0.1']
+    : ['-m', 'uvicorn', 'api.main:app', '--port', '8001', '--host', '127.0.0.1']
+
+  backendProcess = spawn(command, args, {
     cwd: backendDir,
     env: { ...process.env },
     stdio: ['ignore', 'pipe', 'pipe'],
