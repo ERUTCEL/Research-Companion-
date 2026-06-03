@@ -6,7 +6,7 @@ def format_citations(results: list[dict]) -> list[dict]:
     citations: list[dict] = []
     seen: set[str] = set()
 
-    for r in results:
+    for index, r in enumerate(results, 1):
         meta = r.get("metadata", {})
         source_type = meta.get("source_type", "pdf")
         is_memo = bool(meta.get("is_user_memo", False))
@@ -18,6 +18,7 @@ def format_citations(results: list[dict]) -> list[dict]:
         seen.add(key)
 
         citation: dict[str, Any] = {
+            "index": index,
             "title": title,
             "source_type": source_type,
             "is_user_memo": is_memo,

@@ -7,7 +7,7 @@ from typing import AsyncGenerator
 import anthropic
 import structlog
 
-from generation.citation_formatter import compute_confidence
+from generation.citation_formatter import compute_confidence, format_citations
 from generation.prompt_builder import build_messages
 from retrieval.hybrid_search import HybridSearch, SearchFilters
 from retrieval.reranker import Reranker
@@ -37,6 +37,37 @@ def _source_preview(results: list[dict]) -> list[dict]:
             "is_user_memo": bool(meta.get("is_user_memo", False)),
         })
     return previews
+
+
+def _enriched_citations(results: list[dict], llm_citations: list[dict] | None = None) -> list[dict]:
+    by_index = {int(c["index"]): c for c in format_citations(results) if c.get("index") is not None}
+    if not llm_citations:
+        return list(by_index.values())
+
+    enriched: list[dict] = []
+    used: set[int] = set()
+    for llm_citation in llm_citations:
+        try:
+            index = int(llm_citation.get("index"))
+        except (TypeError, ValueError):
+            continue
+        base = by_index.get(index)
+        if not base:
+            continue
+        merged = dict(base)
+        for key, value in llm_citation.items():
+            if value not in ("", None, [], {}):
+                merged[key] = value
+        for key in ("source", "page", "bbox"):
+            if base.get(key):
+                merged[key] = base[key]
+        enriched.append(merged)
+        used.add(index)
+
+    for index, citation in by_index.items():
+        if index not in used:
+            enriched.append(citation)
+    return enriched
 
 
 def parse_llm_response(raw: str) -> dict:
@@ -103,14 +134,14 @@ class RAGPipeline:
             parsed = parse_llm_response(response.content[0].text)
             return {
                 "answer": parsed["answer"],
-                "citations": parsed.get("citations", []),
+                "citations": _enriched_citations(results, parsed.get("citations", [])),
                 "confidence": confidence,
             }
         except (json.JSONDecodeError, KeyError) as exc:
             log.warning("llm_response_parse_failed", error=str(exc))
             return {
                 "answer": response.content[0].text,
-                "citations": [],
+                "citations": _enriched_citations(results),
                 "confidence": confidence,
             }
 
@@ -189,6 +220,6 @@ class RAGPipeline:
 
         try:
             parsed = parse_llm_response(full_text)
-            yield {"type": "done", "citations": parsed.get("citations", []), "confidence": confidence}
+            yield {"type": "done", "citations": _enriched_citations(results, parsed.get("citations", [])), "confidence": confidence}
         except (json.JSONDecodeError, KeyError):
-            yield {"type": "done", "citations": [], "confidence": confidence}
+            yield {"type": "done", "citations": _enriched_citations(results), "confidence": confidence}

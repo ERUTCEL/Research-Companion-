@@ -232,7 +232,7 @@ function SourceSidebar({ sources = [], sessions = [], activeSessionId, onSelectS
   )
 }
 
-function SourceViewer({ backend, open, activeCitation, citations = [], onSelectCitation, onToggle }) {
+function SourceViewer({ backend, open, activeCitation, citations = [], sources = [], onSelectCitation, onToggle }) {
   if (!open) {
     return (
       <button type="button" onClick={onToggle}
@@ -242,7 +242,7 @@ function SourceViewer({ backend, open, activeCitation, citations = [], onSelectC
       </button>
     )
   }
-  const shown = activeCitation || citations[0]
+  const shown = activeCitation || citations[0] || sources[0]
   const pdfUrl = shown?.source
     ? `${backend}/sources/pdf?path=${encodeURIComponent(shown.source)}${shown.page ? `#page=${shown.page}` : ''}`
     : ''
@@ -931,6 +931,7 @@ export default function Chat({ backend }) {
         open={sourcePanelOpen}
         activeCitation={activeCitation}
         citations={latestCitations}
+        sources={latestSources}
         onSelectCitation={handleCitationClick}
         onToggle={() => setSourcePanelOpen(v => !v)}
       />
