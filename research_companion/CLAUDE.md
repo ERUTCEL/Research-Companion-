@@ -2,9 +2,17 @@
 
 ## Project Overview
 
-Local-first AI research assistant for graduate students. Processes PDFs and Notion memos into a searchable library; answers questions using RAG with Claude API (generation only).
+Local-first AI research decision companion for graduate students. Processes PDFs and Notion memos into a searchable library, then helps users identify contribution gaps, project risks, and next validation steps using RAG with Claude API (generation only).
 
 **Target users**: KAIST-type STEM grad students who keep papers in a downloads folder or a Notion DB.
+
+## Product Invariants
+
+- The app is not only a search engine or paper summarizer.
+- Answers should start with the useful judgment when the user asks for strategy, evaluation, or next steps.
+- Retrieved sources should be separated into evidence, gap, contribution, risk, and decision when possible.
+- If the library only supports a generic summary, the assistant should say the research contribution is not clear yet.
+- Serious project advice should end with a concrete 1-2 week validation step.
 
 ## Architecture
 

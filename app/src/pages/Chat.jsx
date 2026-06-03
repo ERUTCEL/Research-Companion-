@@ -4,9 +4,9 @@ import ConfidenceBadge from '../components/ConfidenceBadge'
 import CitationCard from '../components/CitationCard'
 
 const EXAMPLES = [
-  '이 논문들의 핵심 방법론을 요약해줘',
-  '2022년 이후 논문 중 중요도 높은 것 알려줘',
-  '내 노션 메모에서 인상 깊었던 내용이 뭐야?',
+  'Evaluate whether this idea is worth pursuing based on my library.',
+  'What contribution gap appears across these papers and my notes?',
+  'Give me a one-week validation plan for this project.',
 ]
 
 export default function Chat({ backend }) {
@@ -32,9 +32,13 @@ export default function Chat({ backend }) {
     setInput('')
     setLoading(true)
 
-    // Add placeholder assistant message for streaming into
-    const assistantIdx = messages.length + 1
-    setMessages(prev => [...prev, { role: 'assistant', content: '', citations: [], confidence: null, streaming: true }])
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: '',
+      citations: [],
+      confidence: null,
+      streaming: true,
+    }])
 
     try {
       const res = await fetch(`${backend}/chat/stream`, {
@@ -47,7 +51,10 @@ export default function Chat({ backend }) {
         const err = await res.json().catch(() => ({}))
         setMessages(prev => {
           const next = [...prev]
-          next[next.length - 1] = { role: 'error', content: err.detail || `서버 오류 (${res.status})` }
+          next[next.length - 1] = {
+            role: 'error',
+            content: err.detail || `Server error (${res.status})`,
+          }
           return next
         })
         return
@@ -101,13 +108,18 @@ export default function Chat({ backend }) {
                 return next
               })
             }
-          } catch { /* malformed chunk */ }
+          } catch {
+            // Ignore malformed streaming chunks.
+          }
         }
       }
-    } catch (e) {
+    } catch {
       setMessages(prev => {
         const next = [...prev]
-        next[next.length - 1] = { role: 'error', content: '백엔드 연결 실패. 앱을 다시 시작해보세요.' }
+        next[next.length - 1] = {
+          role: 'error',
+          content: 'Could not reach the backend. Restart the app and try again.',
+        }
         return next
       })
     } finally {
@@ -117,7 +129,10 @@ export default function Chat({ backend }) {
   }
 
   function handleKeyDown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input) }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage(input)
+    }
   }
 
   return (
@@ -125,12 +140,16 @@ export default function Chat({ backend }) {
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-6 text-center">
-            <div>
-              <div className="text-4xl mb-2">🔬</div>
-              <h2 className="text-xl font-semibold text-gray-800">논문에 대해 물어보세요</h2>
-              <p className="text-gray-400 text-sm mt-1">인덱싱된 논문과 노션 메모를 바탕으로 답변합니다</p>
+            <div className="max-w-xl space-y-2">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-gray-900 text-sm font-semibold text-white">
+                RC
+              </div>
+              <h2 className="text-xl font-semibold text-gray-800">Ask for a research decision</h2>
+              <p className="text-gray-500 text-sm">
+                Use your papers and notes to find the gap, judge the contribution, and choose the next validation step.
+              </p>
             </div>
-            <div className="flex flex-col gap-2 w-full max-w-sm">
+            <div className="flex flex-col gap-2 w-full max-w-md">
               {EXAMPLES.map(ex => (
                 <button key={ex} onClick={() => sendMessage(ex)}
                   className="text-sm text-left px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors">
@@ -157,7 +176,6 @@ export default function Chat({ backend }) {
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
                   ) : (
-                    /* loading dots while waiting for first token */
                     <div className="flex gap-1 items-center h-5">
                       <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
                       <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
@@ -198,16 +216,17 @@ export default function Chat({ backend }) {
           <textarea ref={inputRef} value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="논문에 대해 질문하세요... (Enter 전송, Shift+Enter 줄바꿈)"
+            placeholder="Ask about a contribution gap, project risk, or next validation step..."
             rows={1}
             className="flex-1 resize-none border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 max-h-32 overflow-y-auto"
             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px' }}
           />
           <button onClick={() => sendMessage(input)}
             disabled={!input.trim() || loading}
+            aria-label="Send message"
             className="p-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0">
             <svg className="w-4 h-4 rotate-90" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
             </svg>
           </button>
         </div>
