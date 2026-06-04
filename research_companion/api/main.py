@@ -51,13 +51,14 @@ app.include_router(local_ai_router)
 app.include_router(sources_router)
 
 # warm-up state
-_ready = {"status": False, "detail": "모델 로딩 중..."}
+_ready = {"status": False, "detail": "임베딩 모델 다운로드/로딩 중... 첫 실행은 수 분 걸릴 수 있습니다."}
 
 
 def _warmup():
     try:
         log.info("warmup_start")
         search = _get_search()
+        _ready["detail"] = "임베딩 모델 다운로드/로딩 중... 첫 실행은 수 분 걸릴 수 있습니다."
         search.embedder.embed_one("warmup")   # actually loads BGE-M3
         _ready["detail"] = "리랭커 로딩 중..."
         pipeline = _get_pipeline()

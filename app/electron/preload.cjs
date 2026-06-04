@@ -6,5 +6,7 @@ contextBridge.exposeInMainWorld('api', {
   openExternal:    (url) => ipcRenderer.invoke('open-external', url),
   getSettings:     () => ipcRenderer.invoke('get-settings'),
   saveSettings:    (s) => ipcRenderer.invoke('save-settings', s),
+  getBackendStatus: () => ipcRenderer.invoke('get-backend-status'),
+  backendUrl:      'http://127.0.0.1:8001',
   isElectron:      true,
 })

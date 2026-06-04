@@ -9,6 +9,9 @@
   "scripts": {
     "dev": "concurrently \"vite --port 5173\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build && electron-builder",
+    "build:mac": "vite build && electron-builder --mac",
+    "build:win": "vite build && electron-builder --win",
+    "build:linux": "vite build && electron-builder --linux",
     "vite": "vite --port 5173",
     "preview": "vite preview"
   },
@@ -53,16 +56,12 @@
       }
     ],
     "mac": {
-      "target": [
-        { "target": "dmg", "arch": ["arm64", "x64"] }
-      ],
+      "target": "dmg",
       "category": "public.app-category.productivity",
       "icon": "assets/icon.icns"
     },
     "win": {
-      "target": [
-        { "target": "nsis", "arch": ["x64"] }
-      ],
+      "target": "nsis",
       "icon": "assets/icon.ico"
     },
     "linux": {

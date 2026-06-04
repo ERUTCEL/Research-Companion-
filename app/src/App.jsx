@@ -5,7 +5,7 @@ import Library from './pages/Library'
 import BrandMark from './components/BrandMark'
 import SettingsModal from './components/SettingsModal'
 
-const BACKEND = '/api'
+const BACKEND = window.api?.backendUrl || '/api'
 const POLL_MS = 1500
 
 export default function App() {
@@ -29,7 +29,12 @@ export default function App() {
           clearInterval(id)
         }
       } catch {
-        setReadyDetail('백엔드 연결 대기 중...')
+        try {
+          const backendStatus = await window.api?.getBackendStatus?.()
+          setReadyDetail(backendStatus?.detail || '백엔드 연결 대기 중...')
+        } catch {
+          setReadyDetail('백엔드 연결 대기 중...')
+        }
       }
     }, POLL_MS)
     return () => clearInterval(id)
@@ -47,7 +52,9 @@ export default function App() {
           </svg>
           {readyDetail}
         </div>
-        <p className="text-[#7b8190] text-xs mt-2">임베딩 모델 로딩 중 — 최초 실행 시 30초~1분 소요됩니다</p>
+        <p className="max-w-md text-center text-[#7b8190] text-xs mt-2">
+          최초 실행은 임베딩 모델을 다운로드하므로 네트워크 환경에 따라 수 분 걸릴 수 있습니다.
+        </p>
       </div>
     )
   }

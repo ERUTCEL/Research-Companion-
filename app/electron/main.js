@@ -5,10 +5,11 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const isDev = process.env.NODE_ENV !== 'production'
+const isDev = !app.isPackaged
 
 let mainWindow
 let backendProcess
+let backendStatus = { state: 'idle', detail: 'Backend has not started.' }
 
 // ── Settings (encrypted via safeStorage) ────────────────────────────────────
 
@@ -41,6 +42,7 @@ function saveSettings(settings) {
 
 function startBackend() {
   let command, args, cwd
+  backendStatus = { state: 'starting', detail: 'Starting CLIO backend...' }
 
   if (isDev) {
     // Dev: use the venv uvicorn directly
@@ -60,6 +62,7 @@ function startBackend() {
     const python = pythonCandidates.find(c => fs.existsSync(c))
     if (!uvicorn && !python) {
       console.warn('[backend] virtualenv not found')
+      backendStatus = { state: 'failed', detail: 'Development virtualenv was not found.' }
       return
     }
     command = uvicorn || python
@@ -73,6 +76,7 @@ function startBackend() {
     command = path.join(process.resourcesPath, 'backend', binName)
     if (!fs.existsSync(command)) {
       console.error('[backend] bundled binary not found:', command)
+      backendStatus = { state: 'failed', detail: `Bundled backend not found: ${command}` }
       return
     }
     args = []
@@ -95,9 +99,27 @@ function startBackend() {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  backendProcess.stdout.on('data', d => console.log('[backend]', d.toString().trim()))
-  backendProcess.stderr.on('data', d => console.error('[backend]', d.toString().trim()))
-  backendProcess.on('exit', code => console.log('[backend] exited', code))
+  backendProcess.stdout.on('data', d => {
+    const detail = d.toString().trim()
+    if (detail) backendStatus = { state: 'running', detail }
+    console.log('[backend]', detail)
+  })
+  backendProcess.stderr.on('data', d => {
+    const detail = d.toString().trim()
+    if (detail) backendStatus = { state: 'error', detail }
+    console.error('[backend]', detail)
+  })
+  backendProcess.on('spawn', () => {
+    backendStatus = { state: 'running', detail: `Backend process started: ${command}` }
+  })
+  backendProcess.on('error', err => {
+    backendStatus = { state: 'failed', detail: err.message }
+    console.error('[backend] failed to start', err)
+  })
+  backendProcess.on('exit', code => {
+    backendStatus = { state: code === 0 ? 'stopped' : 'failed', detail: `Backend exited with code ${code}` }
+    console.log('[backend] exited', code)
+  })
 }
 
 function stopBackend() {
@@ -184,3 +206,5 @@ ipcMain.handle('save-settings', async (_event, settings) => {
   startBackend()
   return { ok: true }
 })
+
+ipcMain.handle('get-backend-status', () => backendStatus)

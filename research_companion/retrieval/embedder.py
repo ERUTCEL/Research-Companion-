@@ -1,4 +1,5 @@
 import os
+import sys
 from functools import lru_cache
 from typing import Any
 
@@ -7,6 +8,7 @@ import structlog
 log = structlog.get_logger()
 
 _MODEL_NAME = os.getenv("EMBEDDER_MODEL", "BAAI/bge-m3")
+_IS_PACKAGED = getattr(sys, "frozen", False)
 
 
 class Embedder:
@@ -22,6 +24,8 @@ class Embedder:
             return
 
         try:
+            if _IS_PACKAGED:
+                raise ImportError("skipped in packaged app")
             from FlagEmbedding import BGEM3FlagModel
 
             self._model = BGEM3FlagModel(self.model_name, use_fp16=True)

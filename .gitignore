@@ -5,6 +5,8 @@ __pycache__/
 .venv/
 dist/
 app/dist-electron/
+app/backend/
+research_companion/dist-bin/
 build/
 
 # Runtime data
