@@ -9,14 +9,9 @@ function getFilePath(file) {
   return api?.getPathForFile?.(file) || file.path || ''
 }
 
-function getParentFolder(filePath) {
-  const separator = filePath.includes('\\') ? '\\' : '/'
-  return filePath.substring(0, filePath.lastIndexOf(separator))
-}
-
 export default function AddDocPanel({ backend, onDone, compact = false }) {
   const [source, setSource] = useState(null)
-  const [folderPath, setFolderPath] = useState('')
+  const [documentPath, setDocumentPath] = useState('')
   const [notionToken, setNotionToken] = useState('')
   const [notionDbId, setNotionDbId] = useState('')
   const [dragging, setDragging] = useState(false)
@@ -48,23 +43,21 @@ export default function AddDocPanel({ backend, onDone, compact = false }) {
   function onDrop(e) {
     e.preventDefault(); e.stopPropagation(); setDragging(false); setError('')
     const files = Array.from(e.dataTransfer.files)
-    const items = Array.from(e.dataTransfer.items || [])
     if (!files.length) return
     const first = files[0]
     const filePath = getFilePath(first)
     if (!filePath) { setError('Electron 앱에서 실행 중인지 확인하세요.'); return }
-    const entry = items[0]?.webkitGetAsEntry?.()
-    const isDir = entry ? entry.isDirectory : (first.type === '')
-    setFolderPath(isDir ? filePath : getParentFolder(filePath))
+    if (!filePath.toLowerCase().endsWith('.pdf')) { setError('PDF 문서만 선택할 수 있습니다.'); return }
+    setDocumentPath(filePath)
     setSource('folder')
   }
 
-  async function handleSelectFolder() {
+  async function handleSelectPdf() {
     const api = getElectronApi()
     const isElectron = !!api?.isElectron
     if (!isElectron) return
-    const p = await api.selectFolder()
-    if (p) { setFolderPath(p); setSource('folder'); setError('') }
+    const p = await api.selectPdf()
+    if (p) { setDocumentPath(p); setSource('folder'); setError('') }
   }
 
   async function handleIngest() {
@@ -72,7 +65,7 @@ export default function AddDocPanel({ backend, onDone, compact = false }) {
     setJobStatus('processing')
     try {
       const body = source === 'folder'
-        ? { source: 'local_folder', path: folderPath }
+        ? { source: 'local_folder', path: documentPath }
         : { source: 'notion', notion_token: notionToken, database_id: notionDbId }
 
       const res = await fetch(`${backend}/ingest`, {
@@ -90,11 +83,11 @@ export default function AddDocPanel({ backend, onDone, compact = false }) {
   }
 
   function handleReset() {
-    setSource(null); setFolderPath(''); setNotionToken(''); setNotionDbId('')
+    setSource(null); setDocumentPath(''); setNotionToken(''); setNotionDbId('')
     setJobId(null); setJobStatus(null); setProgress({ processed: 0, total: 0 }); setError('')
   }
 
-  const canIngest = source === 'folder' ? folderPath.trim() : notionToken.trim() && notionDbId.trim()
+  const canIngest = source === 'folder' ? documentPath.trim() : notionToken.trim() && notionDbId.trim()
   const gap = compact ? 'space-y-3' : 'space-y-4'
   const isElectron = !!getElectronApi()?.isElectron
 
@@ -107,8 +100,8 @@ export default function AddDocPanel({ backend, onDone, compact = false }) {
             source === 'folder' ? 'border-[#2dd4bf] bg-[#ecfffb]' : 'border-[#dce2e8] bg-white hover:border-[#aeb8c6]'
           }`}>
           <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-md bg-[#151a23] text-[10px] font-semibold text-white">PDF</div>
-          <div className="font-medium text-sm text-[#171717]">폴더 선택</div>
-          <div className="text-xs text-[#7b8190]">PDF 파일 폴더</div>
+          <div className="font-medium text-sm text-[#171717]">문서 선택</div>
+          <div className="text-xs text-[#7b8190]">PDF 파일</div>
         </button>
         <button onClick={() => { setSource('notion'); setError('') }}
           className={`rounded-md border p-3 text-left transition-all ${
@@ -125,22 +118,22 @@ export default function AddDocPanel({ backend, onDone, compact = false }) {
         <div ref={dropRef} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
           className={`rounded-md border border-dashed p-4 text-center transition-colors cursor-default ${
             dragging ? 'border-[#2dd4bf] bg-[#ecfffb]'
-            : folderPath ? 'border-[#0f9f8d] bg-[#ecfffb]'
+            : documentPath ? 'border-[#0f9f8d] bg-[#ecfffb]'
             : 'border-[#cfd6df] bg-white hover:border-[#aeb8c6]'
           }`}>
-          {folderPath ? (
+          {documentPath ? (
             <div className="space-y-1">
-              <p className="text-sm font-medium text-[#086c61]">폴더 선택됨</p>
-              <p className="text-xs font-mono bg-white rounded px-2 py-1 text-[#59606b] break-all">{folderPath}</p>
-              <button onClick={() => { setFolderPath(''); setError('') }}
+              <p className="text-sm font-medium text-[#086c61]">PDF 선택됨</p>
+              <p className="text-xs font-mono bg-white rounded px-2 py-1 text-[#59606b] break-all">{documentPath}</p>
+              <button onClick={() => { setDocumentPath(''); setError('') }}
                 className="text-xs text-[#697386] hover:text-[#171717] underline">변경</button>
             </div>
           ) : (
             <div className="space-y-1.5">
-              <p className="text-sm text-[#59606b]">{dragging ? '놓으면 추가됩니다' : 'PDF 폴더를 드래그하거나'}</p>
+              <p className="text-sm text-[#59606b]">{dragging ? '놓으면 추가됩니다' : 'PDF 문서를 드래그하거나'}</p>
               {isElectron && (
-                <button onClick={handleSelectFolder} className="text-sm font-medium text-[#086c61] hover:underline">
-                  폴더 직접 선택
+                <button onClick={handleSelectPdf} className="text-sm font-medium text-[#086c61] hover:underline">
+                  PDF 문서 선택
                 </button>
               )}
             </div>

@@ -71,12 +71,17 @@ function startBackend() {
       : ['-m', 'uvicorn', 'api.main:app', '--port', '8001', '--host', '127.0.0.1']
     cwd = backendDir
   } else {
-    // Production: use the bundled binary in app's resources
+    // Production: prefer the onedir backend so packaged libraries remain
+    // inside the signed app bundle instead of being extracted at runtime.
     const binName = process.platform === 'win32' ? 'clio-backend.exe' : 'clio-backend'
-    command = path.join(process.resourcesPath, 'backend', binName)
-    if (!fs.existsSync(command)) {
-      console.error('[backend] bundled binary not found:', command)
-      backendStatus = { state: 'failed', detail: `Bundled backend not found: ${command}` }
+    const candidates = [
+      path.join(process.resourcesPath, 'backend', 'clio-backend', binName),
+      path.join(process.resourcesPath, 'backend', binName),
+    ]
+    command = candidates.find(candidate => fs.existsSync(candidate))
+    if (!command) {
+      console.error('[backend] bundled binary not found:', candidates)
+      backendStatus = { state: 'failed', detail: `Bundled backend not found: ${candidates.join(', ')}` }
       return
     }
     args = []
@@ -89,6 +94,7 @@ function startBackend() {
     env: {
       ...process.env,
       CLIO_PORT: '8001',
+      CLIO_DATA_DIR: app.getPath('userData'),
       ...(settings.CLIO_PROVIDER     && { CLIO_PROVIDER:     settings.CLIO_PROVIDER }),
       ...(settings.CLIO_MODEL        && { CLIO_MODEL:        settings.CLIO_MODEL }),
       ...(settings.ANTHROPIC_API_KEY && { ANTHROPIC_API_KEY: settings.ANTHROPIC_API_KEY }),
@@ -172,10 +178,11 @@ app.on('quit', stopBackend)
 
 // ── IPC ──────────────────────────────────────────────────────────────────────
 
-ipcMain.handle('select-folder', async () => {
+ipcMain.handle('select-pdf', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory'],
-    title: 'PDF 폴더 선택',
+    properties: ['openFile'],
+    title: 'PDF 문서 선택',
+    filters: [{ name: 'PDF 문서', extensions: ['pdf'] }],
   })
   return result.canceled ? null : result.filePaths[0]
 })

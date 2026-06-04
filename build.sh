@@ -14,11 +14,12 @@ bash "$ROOT/research_companion/build_backend.sh"
 
 # ── 2. Copy binary to app/backend/ ──────────────────────────────────────────
 echo ""
-echo "▸ Step 2: Copy backend binary to app/backend/"
+echo "▸ Step 2: Copy backend directory to app/backend/"
+rm -rf "$ROOT/app/backend"
 mkdir -p "$ROOT/app/backend"
-cp "$ROOT/research_companion/dist-bin/clio-backend" "$ROOT/app/backend/"
+cp -R "$ROOT/research_companion/dist-bin/clio-backend" "$ROOT/app/backend/"
 
-if [[ "$(uname -s)" == "Darwin" ]] && ! file "$ROOT/app/backend/clio-backend" | grep -q "Mach-O"; then
+if [[ "$(uname -s)" == "Darwin" ]] && ! file "$ROOT/app/backend/clio-backend/clio-backend" | grep -q "Mach-O"; then
   echo "✗ Backend is not a macOS executable. Build macOS packages on macOS."
   exit 1
 fi

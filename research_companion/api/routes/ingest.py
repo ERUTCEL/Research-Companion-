@@ -30,11 +30,13 @@ def _run_local_ingest(job_id: str, path: str) -> None:
         chunks = source.ingest(path, on_progress=progress)
         _JOBS[job_id]["total"] = len(chunks)
 
-        if chunks:
-            texts = [c[0] for c in chunks]
-            embeddings = embedder.embed(texts)
-            store.add(chunks, embeddings)
-            MetadataDB().upsert_chunks(chunks)
+        if not chunks:
+            raise RuntimeError("PDF에서 처리 가능한 내용을 찾지 못했습니다. PDF 파서 로그를 확인하세요.")
+
+        texts = [c[0] for c in chunks]
+        embeddings = embedder.embed(texts)
+        store.add(chunks, embeddings)
+        MetadataDB().upsert_chunks(chunks)
 
         _JOBS[job_id]["status"] = "done"
         _JOBS[job_id]["processed"] = _JOBS[job_id]["total"]
@@ -75,15 +77,20 @@ async def start_ingest(req: IngestRequest, background_tasks: BackgroundTasks) ->
         if not req.path:
             raise HTTPException(status_code=422, detail="path is required for local_folder source")
         import os
-        if not os.path.isdir(req.path):
+        if not os.path.exists(req.path):
             raise HTTPException(status_code=422, detail=f"경로를 찾을 수 없습니다: {req.path}")
-        pdfs = [f for f in os.listdir(req.path) if f.lower().endswith(".pdf")]
-        if not pdfs:
+        if os.path.isfile(req.path):
+            if not req.path.lower().endswith(".pdf"):
+                raise HTTPException(status_code=422, detail="PDF 문서만 선택할 수 있습니다.")
+            pdfs = [req.path]
+        else:
+            pdfs = [f for f in os.listdir(req.path) if f.lower().endswith(".pdf")]
+        if not pdfs and os.path.isdir(req.path):
             # also check subdirectories
             import glob
             pdfs = glob.glob(os.path.join(req.path, "**", "*.pdf"), recursive=True)
         if not pdfs:
-            raise HTTPException(status_code=422, detail=f"이 폴더에 PDF가 없습니다: {req.path}")
+            raise HTTPException(status_code=422, detail=f"PDF 문서를 찾을 수 없습니다: {req.path}")
         background_tasks.add_task(_run_local_ingest, job_id, req.path)
 
     elif req.source == "notion":

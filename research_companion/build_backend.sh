@@ -9,7 +9,7 @@ echo "→ Installing pyinstaller..."
 
 echo "→ Building backend binary..."
 .venv/bin/pyinstaller run_server.py \
-  --onefile \
+  --onedir \
   --name clio-backend \
   --distpath dist-bin \
   --workpath /tmp/clio-pyinstaller-build \
@@ -27,8 +27,9 @@ echo "→ Building backend binary..."
   --collect-submodules ingestion \
   --collect-submodules retrieval \
   --collect-submodules generation \
+  --collect-data pymupdf \
   --add-data "$SCRIPT_DIR/RAG_SYSTEM_PROMPT.md:." \
   --noconfirm \
   --clean
 
-echo "✓ Backend binary: dist-bin/clio-backend"
+echo "✓ Backend directory: dist-bin/clio-backend/"

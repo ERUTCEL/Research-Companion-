@@ -7,7 +7,7 @@ Write-Host "Installing PyInstaller..."
 
 Write-Host "Building Windows backend binary..."
 & .\.venv\Scripts\pyinstaller.exe run_server.py `
-  --onefile `
+  --onedir `
   --name clio-backend `
   --distpath dist-bin `
   --workpath "$env:TEMP\clio-pyinstaller-build" `
@@ -25,8 +25,9 @@ Write-Host "Building Windows backend binary..."
   --collect-submodules ingestion `
   --collect-submodules retrieval `
   --collect-submodules generation `
+  --collect-data pymupdf `
   --add-data "$PSScriptRoot\RAG_SYSTEM_PROMPT.md;." `
   --noconfirm `
   --clean
 
-Write-Host "Backend binary: dist-bin\clio-backend.exe"
+Write-Host "Backend directory: dist-bin\clio-backend\"

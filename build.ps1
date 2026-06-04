@@ -6,8 +6,9 @@ Write-Host "Building CLIO Windows backend..."
 & "$Root\research_companion\build_backend.ps1"
 
 Write-Host "Copying backend binary..."
+Remove-Item "$Root\app\backend" -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path "$Root\app\backend" | Out-Null
-Copy-Item "$Root\research_companion\dist-bin\clio-backend.exe" "$Root\app\backend\clio-backend.exe" -Force
+Copy-Item "$Root\research_companion\dist-bin\clio-backend" "$Root\app\backend\clio-backend" -Recurse -Force
 
 Write-Host "Building CLIO Windows installer..."
 Set-Location "$Root\app"

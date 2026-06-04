@@ -3,10 +3,12 @@ import multiprocessing
 import os
 import sys
 
-# PyInstaller sets sys._MEIPASS; use it as the working directory so that
-# relative imports inside api/ still resolve correctly.
-if getattr(sys, 'frozen', False):
-    os.chdir(sys._MEIPASS)
+# Keep databases and indexes outside the packaged app. Downloaded macOS apps
+# may run from a read-only DMG, so writing beside the bundled executable fails.
+data_dir = os.environ.get('CLIO_DATA_DIR')
+if data_dir:
+    os.makedirs(data_dir, exist_ok=True)
+    os.chdir(data_dir)
 
 import uvicorn
 

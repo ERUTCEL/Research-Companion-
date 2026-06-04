@@ -1,5 +1,6 @@
 import uuid
 import dataclasses
+import os
 from pathlib import Path
 from typing import Callable
 
@@ -12,6 +13,8 @@ from ingestion.models import ChunkMetadata, ParseResult
 from ingestion.router import PDFRouter
 
 log = structlog.get_logger()
+_REASONED_FIGURE_TYPES = {"er_diagram", "flowchart", "architecture_diagram", "diagram_or_figure"}
+_MAX_REASONED_FIGURES = int(os.getenv("MAX_VISUAL_REASONING_PER_DOC", "4"))
 
 
 class LocalFolderSource:
@@ -27,7 +30,8 @@ class LocalFolderSource:
         on_progress: Callable[[int, int], None] | None = None,
     ) -> list[tuple[str, ChunkMetadata]]:
         """Return all (chunk_text, metadata) pairs for every PDF in folder_path."""
-        pdfs = sorted(Path(folder_path).rglob("*.pdf"))
+        source_path = Path(folder_path)
+        pdfs = [source_path] if source_path.is_file() and source_path.suffix.lower() == ".pdf" else sorted(source_path.rglob("*.pdf"))
         total = len(pdfs)
         log.info("local_folder_ingest_start", folder=folder_path, total_pdfs=total)
 
@@ -68,8 +72,16 @@ class LocalFolderSource:
             for chunk_text, chunk_meta in chunk_document(result.text, base_meta, result.page_count):
                 all_chunks.append((chunk_text, chunk_meta))
 
+            reasoned_figures = 0
             for fig_idx, figure in enumerate(result.figures):
-                figure_text = self._build_figure_chunk(figure)
+                should_reason = (
+                    reasoned_figures < _MAX_REASONED_FIGURES
+                    and figure.get("figure_type") in _REASONED_FIGURE_TYPES
+                    and bool(figure.get("caption") or figure.get("ocr_text"))
+                )
+                figure_text = self._build_figure_chunk(figure, use_reasoner=should_reason)
+                if should_reason:
+                    reasoned_figures += 1
                 if not figure_text:
                     continue
                 figure_meta = dataclasses.replace(
@@ -91,9 +103,9 @@ class LocalFolderSource:
         log.info("local_folder_ingest_done", total_chunks=len(all_chunks))
         return all_chunks
 
-    def _build_figure_chunk(self, figure: dict) -> str:
+    def _build_figure_chunk(self, figure: dict, use_reasoner: bool = False) -> str:
         base = figure.get("summary", "").strip()
-        structured = self._reasoner.structure_visual_evidence(figure)
+        structured = self._reasoner.structure_visual_evidence(figure) if use_reasoner else None
         if not structured:
             return base
 
