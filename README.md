@@ -12,7 +12,7 @@
 
 | 플랫폼 | 링크 |
 |--------|------|
-| macOS Apple Silicon | [CLIO-0.1.0-arm64.dmg](https://github.com/ERUTCEL/Research-Companion-/releases/tag/v0.1.1) |
+| macOS Apple Silicon | [CLIO-0.1.1-arm64.dmg](https://github.com/ERUTCEL/Research-Companion-/releases/tag/v0.1.1) |
 
 ### macOS 보안 경고 우회
 
