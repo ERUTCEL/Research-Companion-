@@ -38,6 +38,50 @@ function saveSettings(settings) {
   fs.writeFileSync(SETTINGS_FILE(), JSON.stringify(encrypted))
 }
 
+function findInstalledOllamaModel() {
+  try {
+    const roots = [
+      path.join(app.getPath('home'), '.ollama', 'models', 'manifests'),
+      process.env.OLLAMA_MODELS ? path.join(process.env.OLLAMA_MODELS, 'manifests') : '',
+    ].filter(Boolean)
+    for (const root of roots) {
+      if (!fs.existsSync(root)) continue
+      const stack = [root]
+      while (stack.length) {
+        const current = stack.pop()
+        for (const item of fs.readdirSync(current, { withFileTypes: true })) {
+          const full = path.join(current, item.name)
+          if (item.isDirectory()) {
+            stack.push(full)
+          } else if (item.isFile()) {
+            const rel = path.relative(root, full).split(path.sep)
+            if (rel.length >= 3) return `${rel[rel.length - 2]}:${rel[rel.length - 1]}`
+          }
+        }
+      }
+    }
+  } catch {
+    return ''
+  }
+  return ''
+}
+
+function resolveProviderSettings(settings) {
+  const requested = settings.CLIO_PROVIDER || 'auto'
+  if (requested !== 'auto') return { provider: requested, model: settings.CLIO_MODEL || '' }
+
+  const localModel = findInstalledOllamaModel()
+  if (localModel) return { provider: 'ollama', model: settings.CLIO_MODEL || localModel }
+  if (settings.ANTHROPIC_API_KEY) return { provider: 'anthropic', model: settings.CLIO_MODEL || 'claude-sonnet-4-6' }
+  if (settings.OPENAI_API_KEY) {
+    const base = (settings.OPENAI_BASE_URL || '').toLowerCase()
+    if (base.includes('groq.com')) return { provider: 'groq', model: settings.CLIO_MODEL || 'llama-3.3-70b-versatile' }
+    if (base.includes('googleapis.com') || base.includes('generativelanguage')) return { provider: 'gemini', model: settings.CLIO_MODEL || 'gemini-2.0-flash' }
+    return { provider: 'openai', model: settings.CLIO_MODEL || 'gpt-4o' }
+  }
+  return { provider: 'ollama', model: settings.CLIO_MODEL || 'qwen3:8b' }
+}
+
 // ── Backend (FastAPI) ────────────────────────────────────────────────────────
 
 function startBackend() {
@@ -89,6 +133,7 @@ function startBackend() {
   }
 
   const settings = loadSettings()
+  const resolvedProvider = resolveProviderSettings(settings)
   backendProcess = spawn(command, args, {
     cwd,
     env: (() => {
@@ -110,9 +155,8 @@ function startBackend() {
         e.LOCAL_REASONER_ENABLED = 'true'
         if (!e.OLLAMA_BASE_URL) e.OLLAMA_BASE_URL = 'http://127.0.0.1:11434'
       }
-      const provider = settings.CLIO_PROVIDER || 'auto'
-      e.CLIO_PROVIDER = provider
-      if (settings.CLIO_MODEL) e.CLIO_MODEL = settings.CLIO_MODEL
+      e.CLIO_PROVIDER = resolvedProvider.provider
+      if (resolvedProvider.model) e.CLIO_MODEL = resolvedProvider.model
       if (settings.ANTHROPIC_API_KEY) e.ANTHROPIC_API_KEY = settings.ANTHROPIC_API_KEY
       if (settings.OPENAI_API_KEY) e.OPENAI_API_KEY = settings.OPENAI_API_KEY
       if (settings.OPENAI_BASE_URL) e.OPENAI_BASE_URL = settings.OPENAI_BASE_URL
