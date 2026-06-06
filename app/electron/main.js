@@ -98,14 +98,25 @@ function startBackend() {
       delete e.PYTHONHOME
       delete e.PYTHONPATH
       delete e.PYTHONSTARTUP
+      delete e.CLIO_PROVIDER
+      delete e.CLIO_MODEL
+      delete e.ANTHROPIC_API_KEY
+      delete e.OPENAI_API_KEY
+      delete e.OPENAI_BASE_URL
+      delete e.NOTION_TOKEN
       e.CLIO_PORT = '8001'
       e.CLIO_DATA_DIR = app.getPath('userData')
-      if (settings.CLIO_PROVIDER)     e.CLIO_PROVIDER     = settings.CLIO_PROVIDER
-      if (settings.CLIO_MODEL)        e.CLIO_MODEL        = settings.CLIO_MODEL
+      if (process.platform === 'win32') {
+        e.LOCAL_REASONER_ENABLED = 'true'
+        if (!e.OLLAMA_BASE_URL) e.OLLAMA_BASE_URL = 'http://127.0.0.1:11434'
+      }
+      const provider = settings.CLIO_PROVIDER || 'auto'
+      e.CLIO_PROVIDER = provider
+      if (settings.CLIO_MODEL) e.CLIO_MODEL = settings.CLIO_MODEL
       if (settings.ANTHROPIC_API_KEY) e.ANTHROPIC_API_KEY = settings.ANTHROPIC_API_KEY
-      if (settings.OPENAI_API_KEY)    e.OPENAI_API_KEY    = settings.OPENAI_API_KEY
-      if (settings.OPENAI_BASE_URL)   e.OPENAI_BASE_URL   = settings.OPENAI_BASE_URL
-      if (settings.NOTION_TOKEN)      e.NOTION_TOKEN      = settings.NOTION_TOKEN
+      if (settings.OPENAI_API_KEY) e.OPENAI_API_KEY = settings.OPENAI_API_KEY
+      if (settings.OPENAI_BASE_URL) e.OPENAI_BASE_URL = settings.OPENAI_BASE_URL
+      if (settings.NOTION_TOKEN) e.NOTION_TOKEN = settings.NOTION_TOKEN
       return e
     })(),
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -202,7 +213,7 @@ ipcMain.handle('open-external', async (_event, url) => {
 ipcMain.handle('get-settings', () => {
   const s = loadSettings()
   return {
-    CLIO_PROVIDER:     s.CLIO_PROVIDER     || 'anthropic',
+    CLIO_PROVIDER:     s.CLIO_PROVIDER     || 'auto',
     CLIO_MODEL:        s.CLIO_MODEL        || '',
     ANTHROPIC_API_KEY: s.ANTHROPIC_API_KEY || '',
     OPENAI_API_KEY:    s.OPENAI_API_KEY    || '',
@@ -212,7 +223,12 @@ ipcMain.handle('get-settings', () => {
 })
 
 ipcMain.handle('save-settings', async (_event, settings) => {
-  saveSettings(settings)
+  const merged = { ...loadSettings() }
+  for (const [k, v] of Object.entries(settings || {})) {
+    if (v === '' || v == null) delete merged[k]
+    else merged[k] = v
+  }
+  saveSettings(merged)
   // restart backend with new keys
   stopBackend()
   await new Promise(r => setTimeout(r, 500))

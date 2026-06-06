@@ -112,20 +112,20 @@ def build_provider(
 ) -> BaseLLMProvider:
     model = model or os.getenv("CLIO_MODEL", "")
 
-    # Default provider selection:
-    # 1. Explicit CLIO_PROVIDER env var wins
-    # 2. If ANTHROPIC_API_KEY is set → anthropic
-    # 3. Otherwise → ollama (local-first: no API key required)
-    explicit = provider or os.getenv("CLIO_PROVIDER", "")
-    if explicit:
-        provider = explicit
-    elif api_key or os.getenv("ANTHROPIC_API_KEY", ""):
-        provider = "anthropic"
+    # Provider selection:
+    # 1. Explicit CLIO_PROVIDER wins.
+    # 2. "auto" uses available local models first, then configured API keys.
+    # 3. No configured provider falls back to Ollama so Local AI setup can guide users.
+    explicit = (provider or os.getenv("CLIO_PROVIDER", "") or "auto").strip().lower()
+    if explicit == "auto":
+        provider, model, base_url = _resolve_auto_provider(model=model, base_url=base_url)
     else:
-        provider = "ollama"
+        provider = explicit
 
     if provider == "anthropic":
         key = api_key or os.getenv("ANTHROPIC_API_KEY", "")
+        if not key:
+            raise RuntimeError("Anthropic provider selected, but ANTHROPIC_API_KEY is not set.")
         return AnthropicProvider(api_key=key, model=model or "claude-sonnet-4-6")
 
     preset = PROVIDER_PRESETS.get(provider, {})
@@ -138,3 +138,46 @@ def build_provider(
         model=resolved_model,
         base_url=resolved_url,
     )
+
+
+def _resolve_auto_provider(model: str, base_url: str | None) -> tuple[str, str, str | None]:
+    local_model = _first_ollama_model()
+    if local_model:
+        return "ollama", model or local_model, base_url or PROVIDER_PRESETS["ollama"]["base_url"]
+
+    if os.getenv("ANTHROPIC_API_KEY", ""):
+        return "anthropic", model or PROVIDER_PRESETS["anthropic"]["default_model"], base_url
+
+    if os.getenv("OPENAI_API_KEY", ""):
+        resolved_url = base_url or os.getenv("OPENAI_BASE_URL") or None
+        inferred = _infer_openai_compatible_provider(resolved_url)
+        preset = PROVIDER_PRESETS.get(inferred, PROVIDER_PRESETS["openai"])
+        return inferred, model or preset["default_model"], resolved_url
+
+    return "ollama", model or PROVIDER_PRESETS["ollama"]["default_model"], base_url or PROVIDER_PRESETS["ollama"]["base_url"]
+
+
+def _first_ollama_model() -> str:
+    try:
+        import requests
+
+        base = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
+        res = requests.get(f"{base}/api/tags", timeout=1.5)
+        res.raise_for_status()
+        models = res.json().get("models", [])
+        for item in models:
+            name = item.get("name", "")
+            if name:
+                return name
+    except Exception:
+        return ""
+    return ""
+
+
+def _infer_openai_compatible_provider(base_url: str | None) -> str:
+    url = (base_url or "").lower()
+    if "groq.com" in url:
+        return "groq"
+    if "googleapis.com" in url or "generativelanguage" in url:
+        return "gemini"
+    return "openai"

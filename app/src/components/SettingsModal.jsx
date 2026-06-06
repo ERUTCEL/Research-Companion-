@@ -3,6 +3,15 @@ import { useState, useEffect } from 'react'
 const isElectron = typeof window !== 'undefined' && !!window.api?.isElectron
 
 const PROVIDERS = {
+  auto: {
+    label: '자동 선택',
+    keyLabel: null,
+    keyPlaceholder: '',
+    keyEnv: null,
+    models: [],
+    defaultModel: '',
+    showBaseUrl: false,
+  },
   anthropic: {
     label: 'Anthropic (Claude)',
     keyLabel: 'API Key',
@@ -62,21 +71,24 @@ const PROVIDERS = {
 }
 
 export default function SettingsModal({ open, onClose }) {
-  const [provider, setProvider]     = useState('anthropic')
-  const [model, setModel]           = useState('claude-sonnet-4-6')
+  const [provider, setProvider]     = useState('auto')
+  const [model, setModel]           = useState('')
   const [apiKey, setApiKey]         = useState('')
   const [baseUrl, setBaseUrl]       = useState('')
   const [notionToken, setNotionToken] = useState('')
+  const [savedSettings, setSavedSettings] = useState({})
   const [saving, setSaving]   = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => {
     if (!open || !isElectron) return
     window.api.getSettings().then(s => {
-      setProvider(s.CLIO_PROVIDER || 'anthropic')
-      setModel(s.CLIO_MODEL || 'claude-sonnet-4-6')
-      setApiKey(s.ANTHROPIC_API_KEY || s.OPENAI_API_KEY || '')
-      setBaseUrl(s.OPENAI_BASE_URL || '')
+      const nextProvider = s.CLIO_PROVIDER || 'auto'
+      setSavedSettings(s)
+      setProvider(nextProvider)
+      setModel(s.CLIO_MODEL || PROVIDERS[nextProvider]?.defaultModel || '')
+      setApiKey(apiKeyForProvider(nextProvider, s))
+      setBaseUrl(s.OPENAI_BASE_URL || PROVIDERS[nextProvider]?.defaultBaseUrl || '')
       setNotionToken(s.NOTION_TOKEN || '')
     })
   }, [open])
@@ -86,8 +98,8 @@ export default function SettingsModal({ open, onClose }) {
   function handleProviderChange(p) {
     setProvider(p)
     setModel(PROVIDERS[p]?.defaultModel || '')
-    setBaseUrl(PROVIDERS[p]?.defaultBaseUrl || '')
-    setApiKey('')
+    setBaseUrl(savedSettings.OPENAI_BASE_URL || PROVIDERS[p]?.defaultBaseUrl || '')
+    setApiKey(apiKeyForProvider(p, savedSettings))
     setMessage('')
   }
 
@@ -97,7 +109,7 @@ export default function SettingsModal({ open, onClose }) {
     try {
       const settings = {
         CLIO_PROVIDER: provider,
-        CLIO_MODEL:    model.trim(),
+        CLIO_MODEL:    provider === 'auto' ? '' : model.trim(),
         NOTION_TOKEN:  notionToken.trim(),
       }
       if (provider === 'anthropic') {
@@ -163,6 +175,7 @@ export default function SettingsModal({ open, onClose }) {
           </div>
 
           {/* Model */}
+          {provider !== 'auto' && (
           <div>
             <label className="mb-1.5 block text-xs font-medium text-[#1E293B]">모델</label>
             {meta.models.length > 0 ? (
@@ -176,6 +189,7 @@ export default function SettingsModal({ open, onClose }) {
                 className="w-full rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-sm font-mono focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20" />
             )}
           </div>
+          )}
 
           {/* API Key */}
           {meta.keyLabel && (
@@ -244,4 +258,10 @@ export default function SettingsModal({ open, onClose }) {
       </div>
     </div>
   )
+}
+
+function apiKeyForProvider(provider, settings) {
+  if (provider === 'anthropic') return settings.ANTHROPIC_API_KEY || ''
+  if (provider && provider !== 'auto' && provider !== 'ollama') return settings.OPENAI_API_KEY || ''
+  return ''
 }
